@@ -1,0 +1,130 @@
+
+
+Terraform state Management
+--------------------------
+1. TF state
+----------
+* terraform.tfstate --> Contains the configuration details based on the configuration performed with terraform files. However if anyone makes changes in console directly, terraform won't detect those changes and to make terraform understand about the changes, we have use eithrt "terraform refresh" OR "terraform apply".
+
+* terraform apply --> also does the "terraform refresh to get the state of resources based on what it is in the console and update the terraform.tfstate file accordingly.
+
+$ terraform state list --> Lists the resources Terraform believes it is managing, according to the state file (.tfstate).
+
+$ terraform state show <resource_name> --> to see the complete details of that resource based on the .tfstate content
+
+
+$ terraform state rm <resource_name> --> removes the resource from Terraform’s state file. It does not delete the actual resource in AWS/cloud. After removal, Terraform “forgets” that it manages this resource.
+
+
+$ terraform state list
+aws_default_vpc.default
+aws_instance.my_instance["tws-junoon-automate-medium"]
+aws_instance.my_instance["tws-junoon-automate-micro"]
+aws_key_pair.deployer
+aws_security_group.my_security_group
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2
+$ terraform state rm aws_key_pair.deployer
+Removed aws_key_pair.deployer
+Successfully removed 1 resource instance(s).
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2
+$ terraform state list
+aws_default_vpc.default
+aws_instance.my_instance["tws-junoon-automate-medium"]
+aws_instance.my_instance["tws-junoon-automate-micro"]
+aws_security_group.my_security_group
+
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2
+$ terraform apply
+aws_default_vpc.default: Refreshing state... [id=vpc-088e5f8c3fd736d52]
+aws_security_group.my_security_group: Refreshing state... [id=sg-0f6d489041679794a]
+aws_instance.my_instance["tws-junoon-automate-medium"]: Refreshing state... [id=i-0a3915935e93c3239]
+aws_instance.my_instance["tws-junoon-automate-micro"]: Refreshing state... [id=i-0b212f6729cc7df9e]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_key_pair.deployer will be created
+  + resource "aws_key_pair" "deployer" {
+      + arn             = (known after apply)
+      + fingerprint     = (known after apply)
+      + id              = (known after apply)
+      + key_name        = "id_rsa"
+      + key_name_prefix = (known after apply)
+      + key_pair_id     = (known after apply)
+      + key_type        = (known after apply)
+      + public_key      = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDaOoQaHsR8y94caS8LGY2X5ku2KWw2Pd5e9DuiF4I/k1KuQGO2LYTNojDsXb4XyGd7JslsW+HUP7rhuixzx1B0CXYmttvTqFAZaUsC3qMci6zInlc+VsS0uEEs5SWW+XKqPs31DqznA96lHAmNGym1HQyUtXcnJCeWVGnW3/qOA5KxISQk1Os41DUlBu3s8YnweC6rHhFQzzKyX6u7b0SGyO+hY4k1l+jJxZA4xl/gVlsOyMj6I8yxXEfgLT/RgNuKIy/XepirBoNtpm6lGFKWEOKMG3qIw2ltywJeLyBYON3G1U7WsYsw/IaDmOtq0NkGnXA3b/sQScif5J9v4Y5OvgQOpsrPqNzjVPoHTMnegABYnRuU7NaCQ3wpC9IwJsudR2HLyKpCTl3GH5rT1m3vnUTj8SY+ltVecXGbn8/Joa5xUQGgd1Wat5chcDRH9JOizjYpdKMdWu+/5WBcy2FebdUA3lUg71l39+NLN6gREVsm098AoZQsrxgTwvRk308= ANUROOP P S@ANU"
+      + region          = "us-east-2"
+      + tags_all        = (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_key_pair.deployer: Creating...
+╷
+│ Error: importing EC2 Key Pair (id_rsa): operation error EC2: ImportKeyPair, https response error StatusCode: 400, RequestID: 4b8fd6b8-79e1-481c-a4a3-a7bb0289b492, api error InvalidKeyPair.Duplicate: The keypair already exists
+│
+│   with aws_key_pair.deployer,
+│   on main.tf line 2, in resource "aws_key_pair" "deployer":
+│    2: resource "aws_key_pair" "deployer" {
+│
+╵
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2
+
+
+
+Terraform Import
+----------------
+
+If a resource exists in AWS but not in Terraform state (you created it manually in console, or you ran terraform state rm earlier), Terraform doesn’t know about it.
+
+Running terraform import tells Terraform:
+“Hey, this AWS thing already exists, map it to this resource block in my .tf config.”
+
+After import, the resource will show up in terraform state list and Terraform will manage it going forward.
+
+
+$ terraform import aws_key_pair.deployer id_rsa
+aws_key_pair.deployer: Importing from ID "id_rsa"...
+aws_key_pair.deployer: Import prepared!
+  Prepared aws_key_pair for import
+aws_key_pair.deployer: Refreshing state... [id=id_rsa]
+
+Import successful!
+
+The resources that were imported are shown above. These resources are now in
+your Terraform state and will henceforth be managed by Terraform.
+
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2
+
+If the resource is created manually without terraform and if we want that resource to be managed by terraform now, first we have to create a resource block for that resource and we have to use 
+
+$ terraform import <parameter> <ID>
+
+
+# Option 1
+resource "aws_instance" "my_new_instance" {
+  ami = "unknown"
+}
+
+
+# Option 2
+resource "aws_instance" "my_new_instance" {
+}
+
+
+Both are fine
+
+$ terraform import aws_instance.my_new_instance <ID>

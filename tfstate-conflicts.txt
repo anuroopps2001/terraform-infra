@@ -1,0 +1,60 @@
+Secure State Management
+-----------------------
+
+
+*****THIS IS ASKED FOR 5+ exp CANDIDATES.**************
+
+.tfstate file
+~~~~~~~~~~~~~~
+
+** It’s Terraform’s source of truth about what infra exists.
+
+   Contains resource IDs, metadata, and dependencies.
+
+  Every terraform plan/apply relies on .tfstate to know what to create/update/destroy.
+  
+  
+Problems with terraform.tfstate file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. We cannot commit the terraform.tfstate file to github because it contains important data.
+
+2. State conflict:- 
+   a. Multiple users/processes try to modify the same state at the same time (e.g., two terraform apply running).
+   b. .tfstate file content doesn’t match the real cloud infra (AWS/Azure/etc.) due to:
+
+       i.   Manual changes in the console
+
+       ii.  Failed/incomplete Terraform apply
+
+       iii. Direct edits to .tfstate file
+
+       iv.  Using different workspaces without realizing
+	   
+How to overcome the above issues.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Create a common .tfstate and keep it in safe place called as "Remote Backend"
+
+* We have to perform state locking using DynamoDB (Kind of NoSQL database)
+
+* After keeping the .tfstate in s3 and integrating with DynamoDB, if someone access the objects from s3, LOCKID will be generated at DynamoDB and no else can be allowed to access the objects until the LOCKID is released and this is called as "Lock & Release Mechanism"
+
+
+
+
+1) Add backend block to your Terraform code
+
+In your project (the directory that currently has the local terraform.tfstate), create or edit backend.tf (or add inside terraform {} in any .tf):
+
+terraform {
+  backend "s3" {
+    bucket         = "my-terraform-states"   # your S3 bucket
+    key            = "envs/dev/terraform.tfstate"  # path for this project's state file
+    region         = "us-east-2"
+    dynamodb_table = "terraform-locks"       # your lock table name
+    encrypt        = true
+  }
+}
+
+Pick a unique key per environment/project (so prod/dev states do not overlap).
