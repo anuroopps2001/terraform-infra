@@ -14,8 +14,14 @@ variable "ec2_root_disK_size" {
 }
 
 
+variable "project_name" {
+  description = "Project name prefix"
+  type        = string
+  default     = "tws-junoon-automate"
+}
+
 # conditional statements
 variable "env" {
-  default = "prod"
+  default = "default"
   type    = string
 }

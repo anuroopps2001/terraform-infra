@@ -1,6 +1,6 @@
 # key pair
 resource "aws_key_pair" "deployer" {
-  key_name   = "id_rsa"
+  key_name   = local.env_name
   public_key = file("./id_rsa.pub")
 }
 
@@ -11,7 +11,7 @@ resource "aws_default_vpc" "default" {
 
 # Security Group
 resource "aws_security_group" "my_security_group" {
-  name        = "automate-sg"
+  name        = local.security_group_name
   description = "This will add an tf generated security group"
   vpc_id      = aws_default_vpc.default.id #interpolation (it is a way in which we can extract the values from an any terraform block)
 
@@ -49,9 +49,24 @@ resource "aws_security_group" "my_security_group" {
     description = "all access"
   }
   tags = {
+    Name = local.security_group_name
     name = "automate-sg"
   }
 }
+
+
+# local variables
+locals {
+
+  security_group_name = terraform.workspace == "default" ? "first-sg" : local.env_name
+  # If workspace = default → env_name = "default"
+  # Else → env_name = workspace name
+  env_name = terraform.workspace == "default" ? "default" : terraform.workspace
+
+  # Build full name using variable + workspace
+  instance_prefix = "${local.env_name}-${var.project_name}"
+}
+
 
 # ec2 instance
 
@@ -60,8 +75,8 @@ resource "aws_instance" "my_instance" {
 
   # using for each meta arguement
   for_each = tomap({
-    tws-junoon-automate-micro  = "t2.micro"
-    tws-junoon-automate-medium = "t2.medium"
+    "${local.instance_prefix}-micro"  = "t2.micro"
+    "${local.instance_prefix}-medium" = "t2.medium"
   })
 
   # depends_on is also an meta arguement
@@ -73,8 +88,8 @@ resource "aws_instance" "my_instance" {
   user_data       = file("install_nginx.sh") # to input something into the instance ASAP, the instance gets started through the scripts
 
   root_block_device {
-    volume_size = var.env == "uat" ? var.ec2_root_disK_size : 10 # ternary operator in terms on programming OR conditional statements in terraform
-    volume_type = "gp3"                                          # gp=General Purpose
+    volume_size = local.env_name == "default" ? 10 : 11 # ternary operator in terms on programming OR conditional statements in terraform
+    volume_type = "gp3"                                 # gp=General Purpose
   }
 
   tags = {
@@ -85,6 +100,6 @@ resource "aws_instance" "my_instance" {
 
 # Importing resources created manually into terraform
 resource "aws_instance" "my_new_instance" {
-  ami = "ami-0cfde0ea8edd312d4"
+  ami           = "ami-0cfde0ea8edd312d4"
   instance_type = "t3.micro"
 }
