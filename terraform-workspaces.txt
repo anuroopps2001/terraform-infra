@@ -103,3 +103,9 @@ Using the -force option may not be a good idea as we will lose track of all the 
 Note: Default workspace cannot be deleted.
 
 
+
+
+When the workspace is created in local backend, below is the format in which tfstate file is created for specific workspace
+
+$ ls -ltr terraform.tfstate.d/test_workspace/terraform.tfstate 
+-rw-r--r-- 1 ANUROOP P S 197121 24832 Sep 19 13:50 terraform.tfstate.d/test_workspace/terraform.tfstate
