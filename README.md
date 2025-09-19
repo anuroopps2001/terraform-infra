@@ -139,6 +139,7 @@ They are useful for managing **different environments** (e.g., dev, test, prod) 
 
 ---
 
+### workspace life cycle
 ```bash
 terraform workspace list
 terraform workspace show
