@@ -1,0 +1,105 @@
+Terraform workspaces
+---------------------
+Local Backend
+~~~~~~~~~~~~~
+By default, Terraform uses the local backend (state file stored in terraform.tfstate on your machine).
+
+This backend supports workspaces (terraform workspace new, terraform workspace select, etc.).
+
+Each workspace just creates a separate state file under .terraform/ locally (e.g., terraform.tfstate.d/<workspace-name>/terraform.tfstate).
+
+✅ So you can use workspaces without a remote backend.
+
+
+Remote Backends
+~~~~~~~~~~~~~~~
+
+When you use a remote backend (like S3, Azure Blob, GCS, Terraform Cloud, Consul, etc.), workspace support depends on the backend.
+
+Some backends natively support workspaces (e.g., S3, GCS, Terraform Cloud).
+
+Some backends don’t support workspaces (e.g., remote, pg, certain custom backends). In those cases, you’ll need to use a different strategy (like separate state files or key prefixes per environment).
+
+
+
+When we create a new workspace, Terraform creates a corresponding new state file in the same remote backend that is configured initially. **It is important to note that the backend being used should also be able to support the workspaces.**
+
+In this example, I have used the AWS S3 bucket as the remote backend.
+
+When we look at the contents of the Terraform state S3 bucket, apart from our default terraform.tfstate file, we can see that a new directory named “env:/” is created, within which another directory with the name of our workspace (test_workspace) is created. A new terraform.tfstate file is maintained at this location.
+
+$ aws s3 ls s3://remote-backend-bucket-for-storing-statefile --recursive --human-readable --summarize
+2025-09-19 12:20:52  181 Bytes env:/test_workspace/terraform.tfstate
+2025-09-19 12:16:47   24.0 KiB terraform.tfstate
+
+Total Objects: 2
+   Total Size: 24.2 KiB
+   
+   
+The contents of the test_workspace state file before running terraform apply are shown below:
+
+{
+  "version": 4,
+  "terraform_version": "1.12.1",
+  "serial": 1,
+  "lineage": "599e800a-1fb8-b526-c934-f656c291b984",
+  "outputs": {},
+  "resources": [],
+  "check_results": null
+}
+
+
+
+Now we can create the resources using same terraform configuration files in another workspace which will automatically update the tfstate file for corresponding workspace.
+
+
+How to delete a Terraform workspace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To delete the workspace, first select a different workspace. In our case, we go back to the default workspace and run the delete command. Terraform does not let us delete the currently selected workspace.
+
+$ terraform workspace list
+  default
+* test_workspace
+
+
+
+$ terraform workspace delete test_workspace
+Workspace "test_workspace" is your active workspace.
+
+You cannot delete the currently active workspace. Please switch
+to another workspace and try again.
+
+
+$ terraform workspace select default
+Switched to workspace "default".
+
+
+$ terraform workspace delete test_workspace
+Acquiring state lock. This may take a few moments...
+Releasing state lock. This may take a few moments...
+Deleted workspace "test_workspace"!
+
+
+$ terraform workspace list
+* default
+
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2 (main)
+
+
+The corresponding directory structure in our S3 backend is deleted along with the state file.
+
+$ aws s3 ls s3://remote-backend-bucket-for-storing-statefile --recursive --human-readable --summarize
+2025-09-19 12:16:47   24.0 KiB terraform.tfstate
+
+Total Objects: 1
+   Total Size: 24.0 KiB
+   
+Also, if you attempt to delete a workspace where certain resources are being managed by Terraform, it will not let you delete that workspace, suggesting using the -force option instead.
+
+Using the -force option may not be a good idea as we will lose track of all the resources being managed by Terraform. A better option would be to select that workspace, run the destroy command, and then attempt to delete the workspace again.
+
+Note: Default workspace cannot be deleted.
+
+
