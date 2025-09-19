@@ -1,0 +1,69 @@
+$ terraform workspace list
+* default
+  test_workspace
+
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2 (main)
+$ terraform state pull > backup-default.tfstate.json
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2 (main)
+$ terraform workspace select test_workspace
+Switched to workspace "test_workspace".
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2 (main)
+$ terraform state pull > backup-test_workspace.tfstate.json
+
+ANUROOP P S@ANU MINGW64 /d/terraform/ec2 (main)
+
+
+
+Edit your terraform block to use a local backend (or remove the backend "s3" { ... } block entirely). Example explicit local backend:
+
+
+terraform {
+  backend "local" {
+    path = "terraform.tfstate"
+  }
+}
+
+
+$ terraform init -migrate-state
+
+Initializing the backend...
+Terraform detected that the backend type changed from "s3" to "local".
+
+Do you want to migrate all workspaces to "local"?
+  Both the existing "s3" backend and the newly configured "local" backend
+  support workspaces. When migrating between backends, Terraform will copy
+  all workspaces (with the same names). THIS WILL OVERWRITE any conflicting
+  states in the destination.
+
+  Terraform initialization doesn't currently migrate only select workspaces.
+  If you want to migrate a select number of workspaces, you must manually
+  pull and push those states.
+
+  If you answer "yes", Terraform will migrate all states. If you answer
+  "no", Terraform will abort.
+
+  Enter a value: yes
+
+Releasing state lock. This may take a few moments...
+Releasing state lock. This may take a few moments...
+
+Successfully configured the backend "local"! Terraform will automatically
+use this backend unless the backend configuration changes.
+Initializing provider plugins...
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Using previously-installed hashicorp/aws v6.13.0
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+
