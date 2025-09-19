@@ -130,3 +130,101 @@ $ terraform import aws_instance.my_new_instance <RESOURCE_ID>
 ```
 
 Run `terraform state list` to confirm it‚Äôs tracked.
+
+
+## Ì∑ÇÔ∏è Terraform Workspaces
+
+Workspaces in Terraform allow you to manage **multiple state files** within the same configuration directory.
+They are useful for managing **different environments** (e.g., dev, test, prod) without duplicating Terraform code.
+
+---
+
+```bash
+terraform workspace list
+terraform workspace show
+terraform workspace new <new_workspace_name> # to create a new workspace
+terraform workspace select <workspace_to_switch> # to switch to selected workspace
+```
+## 1. Local Backend Workspaces
+
+By default, Terraform uses the **local backend**, storing state in a file named `terraform.tfstate` on your machine.
+
+- This backend **supports workspaces** (`terraform workspace new`, `terraform workspace select`, etc.).
+- Each workspace creates a separate state file under `terraform.tfstate.d/` locally.
+  Example:
+
+```
+{
+  "version": 4,
+  "terraform_version": "1.12.1",
+  "serial": 1,
+  "lineage": "599e800a-1fb8-b526-c934-f656c291b984",
+  "outputs": {},
+  "resources": [],
+  "check_results": null
+}
+
+```
+
+‚úÖ So you can use workspaces even without a remote backend.
+
+---
+
+### Example: AWS S3 as Remote Backend
+
+When a new workspace is created, Terraform creates a **separate state file** in the configured S3 bucket.
+
+```bash
+$ aws s3 ls s3://remote-backend-bucket-for-storing-statefile --recursive --human-readable --summarize
+2025-09-19 12:20:52  181 Bytes env:/test_workspace/terraform.tfstate
+2025-09-19 12:16:47   24.0 KiB terraform.tfstate
+
+Total Objects: 2
+ Total Size: 24.2 KiB
+```
+## Deleting a Workspace
+‚ö†Ô∏è You cannot delete the currently active workspace.
+First, switch to another workspace (usually default).
+
+
+#### Example: Deleting test_workspace
+```bash
+$ terraform workspace list
+  default
+* test_workspace
+
+$ terraform workspace delete test_workspace
+Workspace "test_workspace" is your active workspace.
+
+You cannot delete the currently active workspace. Please switch
+to another workspace and try again.
+
+$ terraform workspace select default
+Switched to workspace "default".
+
+$ terraform workspace delete test_workspace
+Acquiring state lock. This may take a few moments...
+Releasing state lock. This may take a few moments...
+Deleted workspace "test_workspace"!
+
+$ terraform workspace list
+* default
+```
+
+### Ì∑ëÔ∏è Deleting a Workspace with Resources
+
+If resources exist in a workspace, Terraform will not let you delete it.
+
+You may use the `-force` flag to delete, but ‚ö†Ô∏è **this is not recommended**
+(because you will lose state tracking of those resources).
+
+---
+
+### ‚úÖ Safer Approach
+1. Select the workspace you want to delete.
+2. Run `terraform destroy` to remove all resources in that workspace.
+3. Switch to another workspace using `terraform workspace select default`
+4. Delete the workspace using `terraform workspace delete <name>`.
+
+
+ÔøΩÔøΩ **Note:** The `default` workspace cannot be deleted.
