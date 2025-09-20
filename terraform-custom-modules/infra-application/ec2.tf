@@ -55,7 +55,7 @@ resource "aws_security_group" "my_security_group" {
 
 # local variables
 locals {
-  sg_id = var.shared_sg_id != "" ? var.shared_sg_id : ""   # if using lookup later, fill fallback
+  sg_id = var.shared_sg_id   # if using lookup later, fill fallback
 
   security_group_name = terraform.workspace == "default" ? format("%s-%s-%s", var.env, data.aws_caller_identity.current.account_id, local.sg_id) : format("%s-%s-%s", terraform.workspace, data.aws_caller_identity.current.account_id, local.sg_id)
 }

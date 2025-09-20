@@ -1,7 +1,8 @@
+# Asks AWS: “What region is my provider configured for?”
 data "aws_region" "current" {}
 
 
-# get current AWS account id
+# Asks AWS: “Who am I right now?” (using the credentials Terraform is running with).
 data "aws_caller_identity" "current" {}
 
 # lookup security group by name (replace var.sg_lookup_name or adjust to filter by tag)
