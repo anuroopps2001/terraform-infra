@@ -1,20 +1,83 @@
-# Using terraform modules
 
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws" # Source is important, because that's the place from where terraform get the resource blocks
+# Fetch the AZ's in the us-east-2 region
+data "aws_availability_zones" "available" {}
 
-  name = "terraform-module-vpc"
-  cidr = "10.0.0.0/16"
+# limit AZs to the number of public CIDRs provided
+locals {
+  # gives the list/tuple which we can with count.index to access the value at specific index
+  azs_limited = slice(data.aws_availability_zones.available.names, 0, length(var.public_subnet_cidrs))
 
-  azs             = ["us-east-2a", "us-east-2b"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  # gives the number, which we cannot use with count.index to access the value at specific index
+  azs_count = length(local.azs_limited)
+}
 
-  enable_nat_gateway = true
-  enable_vpn_gateway = true
-
+# VPC creation with specified CIDR range
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
   tags = {
-    Terraform   = "true"
-    Environment = "dev"
+    Name = "Project VPC"
   }
 }
+
+# public subnets
+resource "aws_subnet" "public_subnets" {
+  count             = local.azs_count
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = local.azs_limited[count.index]
+  tags = {
+    Name = "Public subnet ${count.index + 1}"
+    Type = "public"
+  }
+}
+
+# private subnets
+resource "aws_subnet" "private_subnet" {
+  count             = local.azs_count
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
+  availability_zone = local.azs_limited[count.index]
+  tags = {
+    Name = "Private subnet ${count.index + 1}"
+    Type = "private"
+  }
+}
+
+
+# Internet gateway to provide internet access to the public subnet servers
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "Project VPC IG"
+  }
+}
+
+
+# Route table to allow traffic to reach internet through the IGW
+
+
+# Whoever want to reach 0.0.0.0/0 (internet), it has to reach OGW first
+resource "aws_route_table" "example" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+  tags = {
+    Name = "2nd Route Table"
+  }
+}
+
+
+# specifing the specific subnets as public subnets
+resource "aws_route_table_association" "public_subnet_asso" {
+  count          = length(var.public_subnet_cidrs)
+  subnet_id      = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.example.id
+}
+
+
+
